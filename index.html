@@ -1,29 +1,30 @@
 <!DOCTYPE html>
 <html lang="en-us">
   <head>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5221630201042895"
-      crossorigin="anonymous"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5221630201042895" crossorigin="anonymous"></script>
 
-    <!-- Google tag (gtag.js) -->
+    <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-CC4ZKKC8EF"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
-      gtag('js', new Date());
-      gtag('config', 'G-CC4ZKKC8EF');
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-CC4ZKKC8EF");
 
-      let displayMode = 'browser';
+      let displayMode = "browser";
       let isPwa = false;
-      const mqStandAlone = '(display-mode: fullscreen)';
+      const mqStandAlone = "(display-mode: fullscreen)";
       if (navigator.standalone || window.matchMedia(mqStandAlone).matches) {
-        displayMode = 'fullscreen';
+        displayMode = "fullscreen";
         isPwa = true;
       }
-      gtag('event', 'pwa_check', { 'pwa': isPwa });
+      gtag("event", "pwa_check", { pwa: isPwa });
     </script>
 
     <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">  
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Block Blast Puzzle</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
@@ -31,421 +32,127 @@
   </head>
   <body>
     <div id="unity-container">
-      <canvas id="unity-canvas" width=1080 height=1920 tabindex="-1"></canvas>
+      <canvas id="unity-canvas" width="1080" height="1920" tabindex="-1"></canvas>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
           <div id="unity-progress-bar-full"></div>
         </div>
       </div>
-      <div id="unity-warning"> </div>
+      <div id="unity-warning"></div>
     </div>
 
     <script>
-      // Version checking logic
-      const LOCAL_VERSION = "1.1"; // Update this when deploying a new version
+      const LOCAL_VERSION = "1.1"; // Current game version
       const VERSION_URL = "version.json"; // URL of the version file
 
       function checkVersionAndReload() {
-        fetch(VERSION_URL)
-          .then((response) => response.json())
+        return fetch(VERSION_URL)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Failed to fetch version.json");
+            }
+            return response.json();
+          })
           .then((data) => {
             if (data.version !== LOCAL_VERSION) {
               console.log("New version detected. Clearing cache and reloading...");
               if (caches) {
                 caches.keys().then((names) => {
                   for (let name of names) {
-                    caches.delete(name);
+                    caches.delete(name); // Clear cache
                   }
                 });
               }
               location.reload(true); // Force reload
-            } else {
-              console.log("Game is up to date.");
+              return false; // Prevent loading further
             }
+            console.log("Game is up to date.");
+            return true; // Proceed with loading the game
           })
-          .catch((err) => console.error("Failed to fetch version file:", err));
+          .catch((err) => {
+            console.error("Version check failed:", err);
+            return true; // Allow the game to load if version check fails
+          });
       }
 
       window.addEventListener("load", function () {
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.register("ServiceWorker.js");
-        }
-        checkVersionAndReload(); // Run the version check
-      });
+        // Run version check before loading Unity
+        checkVersionAndReload().then((shouldLoadGame) => {
+          if (shouldLoadGame) {
+            console.log("Loading Unity...");
+            var container = document.querySelector("#unity-container");
+            var canvas = document.querySelector("#unity-canvas");
+            var loadingBar = document.querySelector("#unity-loading-bar");
+            var progressBarFull = document.querySelector("#unity-progress-bar-full");
+            var warningBanner = document.querySelector("#unity-warning");
 
-      var container = document.querySelector("#unity-container");
-      var canvas = document.querySelector("#unity-canvas");
-      var loadingBar = document.querySelector("#unity-loading-bar");
-      var progressBarFull = document.querySelector("#unity-progress-bar-full");
-      var warningBanner = document.querySelector("#unity-warning");
-
-      function unityShowBanner(msg, type) {
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-        }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
-      }
-
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/BlockBlast1.1-8.loader.js";
-      var config = {
-        dataUrl: buildUrl + "/BlockBlast1.1-8.data.unityweb",
-        frameworkUrl: buildUrl + "/BlockBlast1.1-8.framework.js.unityweb",
-        codeUrl: buildUrl + "/BlockBlast1.1-8.wasm.unityweb",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "reun",
-        productName: "Block Blast Puzzle",
-        productVersion: "1.1",
-        showBanner: unityShowBanner,
-      };
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-      }
-
-      loadingBar.style.display = "block";
-
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          progressBarFull.style.width = 100 * progress + "%";
-        }).then((unityInstance) => {
-          loadingBar.style.display = "none";
-        }).catch((message) => {
-          alert(message);
-        });
-      };
-      document.body.appendChild(script);
-    </script>
-
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5221630201042895"
-      crossorigin="anonymous"></script>
-    <!-- Banner test -->
-    <ins class="adsbygoogle"
-      style="display:block"
-      data-ad-client="ca-pub-5221630201042895"
-      data-ad-slot="3988294629"
-      data-ad-format="auto"
-      data-full-width-responsive="true"></ins>
-    <script>
-      (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
-
-  </body>
-</html><!DOCTYPE html>
-<html lang="en-us">
-  <head>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5221630201042895"
-      crossorigin="anonymous"></script>
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CC4ZKKC8EF"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
-      gtag('js', new Date());
-      gtag('config', 'G-CC4ZKKC8EF');
-
-      let displayMode = 'browser';
-      let isPwa = false;
-      const mqStandAlone = '(display-mode: fullscreen)';
-      if (navigator.standalone || window.matchMedia(mqStandAlone).matches) {
-        displayMode = 'fullscreen';
-        isPwa = true;
-      }
-      gtag('event', 'pwa_check', { 'pwa': isPwa });
-    </script>
-
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">  
-    <title>Block Blast Puzzle</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-    <link rel="manifest" href="manifest.webmanifest">
-  </head>
-  <body>
-    <div id="unity-container">
-      <canvas id="unity-canvas" width=1080 height=1920 tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
-        </div>
-      </div>
-      <div id="unity-warning"> </div>
-    </div>
-
-    <script>
-      // Version checking logic
-      const LOCAL_VERSION = "1.1"; // Update this when deploying a new version
-      const VERSION_URL = "version.json"; // URL of the version file
-
-      function checkVersionAndReload() {
-        fetch(VERSION_URL)
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.version !== LOCAL_VERSION) {
-              console.log("New version detected. Clearing cache and reloading...");
-              if (caches) {
-                caches.keys().then((names) => {
-                  for (let name of names) {
-                    caches.delete(name);
-                  }
-                });
+            function unityShowBanner(msg, type) {
+              function updateBannerVisibility() {
+                warningBanner.style.display = warningBanner.children.length ? "block" : "none";
               }
-              location.reload(true); // Force reload
-            } else {
-              console.log("Game is up to date.");
-            }
-          })
-          .catch((err) => console.error("Failed to fetch version file:", err));
-      }
-
-      window.addEventListener("load", function () {
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.register("ServiceWorker.js");
-        }
-        checkVersionAndReload(); // Run the version check
-      });
-
-      var container = document.querySelector("#unity-container");
-      var canvas = document.querySelector("#unity-canvas");
-      var loadingBar = document.querySelector("#unity-loading-bar");
-      var progressBarFull = document.querySelector("#unity-progress-bar-full");
-      var warningBanner = document.querySelector("#unity-warning");
-
-      function unityShowBanner(msg, type) {
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-        }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
-      }
-
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/BlockBlast1.1-8.loader.js";
-      var config = {
-        dataUrl: buildUrl + "/BlockBlast1.1-8.data.unityweb",
-        frameworkUrl: buildUrl + "/BlockBlast1.1-8.framework.js.unityweb",
-        codeUrl: buildUrl + "/BlockBlast1.1-8.wasm.unityweb",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "reun",
-        productName: "Block Blast Puzzle",
-        productVersion: "1.1",
-        showBanner: unityShowBanner,
-      };
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-      }
-
-      loadingBar.style.display = "block";
-
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          progressBarFull.style.width = 100 * progress + "%";
-        }).then((unityInstance) => {
-          loadingBar.style.display = "none";
-        }).catch((message) => {
-          alert(message);
-        });
-      };
-      document.body.appendChild(script);
-    </script>
-
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5221630201042895"
-      crossorigin="anonymous"></script>
-    <!-- Banner test -->
-    <ins class="adsbygoogle"
-      style="display:block"
-      data-ad-client="ca-pub-5221630201042895"
-      data-ad-slot="3988294629"
-      data-ad-format="auto"
-      data-full-width-responsive="true"></ins>
-    <script>
-      (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
-
-  </body>
-</html><!DOCTYPE html>
-<html lang="en-us">
-  <head>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5221630201042895"
-      crossorigin="anonymous"></script>
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CC4ZKKC8EF"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
-      gtag('js', new Date());
-      gtag('config', 'G-CC4ZKKC8EF');
-
-      let displayMode = 'browser';
-      let isPwa = false;
-      const mqStandAlone = '(display-mode: fullscreen)';
-      if (navigator.standalone || window.matchMedia(mqStandAlone).matches) {
-        displayMode = 'fullscreen';
-        isPwa = true;
-      }
-      gtag('event', 'pwa_check', { 'pwa': isPwa });
-    </script>
-
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">  
-    <title>Block Blast Puzzle</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-    <link rel="manifest" href="manifest.webmanifest">
-  </head>
-  <body>
-    <div id="unity-container">
-      <canvas id="unity-canvas" width=1080 height=1920 tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
-        </div>
-      </div>
-      <div id="unity-warning"> </div>
-    </div>
-
-    <script>
-      // Version checking logic
-      const LOCAL_VERSION = "1.1"; // Update this when deploying a new version
-      const VERSION_URL = "version.json"; // URL of the version file
-
-      function checkVersionAndReload() {
-        fetch(VERSION_URL)
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.version !== LOCAL_VERSION) {
-              console.log("New version detected. Clearing cache and reloading...");
-              if (caches) {
-                caches.keys().then((names) => {
-                  for (let name of names) {
-                    caches.delete(name);
-                  }
-                });
+              var div = document.createElement("div");
+              div.innerHTML = msg;
+              warningBanner.appendChild(div);
+              if (type == "error") div.style = "background: red; padding: 10px;";
+              else {
+                if (type == "warning") div.style = "background: yellow; padding: 10px;";
+                setTimeout(function () {
+                  warningBanner.removeChild(div);
+                  updateBannerVisibility();
+                }, 5000);
               }
-              location.reload(true); // Force reload
-            } else {
-              console.log("Game is up to date.");
+              updateBannerVisibility();
             }
-          })
-          .catch((err) => console.error("Failed to fetch version file:", err));
-      }
 
-      window.addEventListener("load", function () {
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.register("ServiceWorker.js");
-        }
-        checkVersionAndReload(); // Run the version check
-      });
+            var buildUrl = "Build";
+            var loaderUrl = buildUrl + "/BlockBlast1.1-8.loader.js";
+            var config = {
+              dataUrl: buildUrl + "/BlockBlast1.1-8.data.unityweb",
+              frameworkUrl: buildUrl + "/BlockBlast1.1-8.framework.js.unityweb",
+              codeUrl: buildUrl + "/BlockBlast1.1-8.wasm.unityweb",
+              streamingAssetsUrl: "StreamingAssets",
+              companyName: "reun",
+              productName: "Block Blast Puzzle",
+              productVersion: LOCAL_VERSION,
+              showBanner: unityShowBanner,
+            };
 
-      var container = document.querySelector("#unity-container");
-      var canvas = document.querySelector("#unity-canvas");
-      var loadingBar = document.querySelector("#unity-loading-bar");
-      var progressBarFull = document.querySelector("#unity-progress-bar-full");
-      var warningBanner = document.querySelector("#unity-warning");
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+              var meta = document.createElement("meta");
+              meta.name = "viewport";
+              meta.content =
+                "width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes";
+              document.getElementsByTagName("head")[0].appendChild(meta);
+            }
 
-      function unityShowBanner(msg, type) {
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-        }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
-      }
+            loadingBar.style.display = "block";
 
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/BlockBlast1.1-8.loader.js";
-      var config = {
-        dataUrl: buildUrl + "/BlockBlast1.1-8.data.unityweb",
-        frameworkUrl: buildUrl + "/BlockBlast1.1-8.framework.js.unityweb",
-        codeUrl: buildUrl + "/BlockBlast1.1-8.wasm.unityweb",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "reun",
-        productName: "Block Blast Puzzle",
-        productVersion: "1.1",
-        showBanner: unityShowBanner,
-      };
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-      }
-
-      loadingBar.style.display = "block";
-
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          progressBarFull.style.width = 100 * progress + "%";
-        }).then((unityInstance) => {
-          loadingBar.style.display = "none";
-        }).catch((message) => {
-          alert(message);
+            var script = document.createElement("script");
+            script.src = loaderUrl;
+            script.onload = () => {
+              createUnityInstance(canvas, config, (progress) => {
+                progressBarFull.style.width = 100 * progress + "%";
+              })
+                .then((unityInstance) => {
+                  loadingBar.style.display = "none";
+                })
+                .catch((message) => {
+                  alert(message);
+                });
+            };
+            document.body.appendChild(script);
+          } else {
+            console.log("Game loading aborted due to version mismatch.");
+          }
         });
-      };
-      document.body.appendChild(script);
+      });
     </script>
 
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5221630201042895"
-      crossorigin="anonymous"></script>
-    <!-- Banner test -->
-    <ins class="adsbygoogle"
-      style="display:block"
-      data-ad-client="ca-pub-5221630201042895"
-      data-ad-slot="3988294629"
-      data-ad-format="auto"
-      data-full-width-responsive="true"></ins>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5221630201042895" crossorigin="anonymous"></script>
+    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-5221630201042895" data-ad-slot="3988294629" data-ad-format="auto" data-full-width-responsive="true"></ins>
     <script>
       (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
-
   </body>
 </html>
